@@ -1,0 +1,22 @@
+     1                                  ; Infinite loop (e9 fd ff)
+     2                                  
+     3                                  print:
+     4 00000000 B40E                        mov ah, 0x0e
+     5 00000002 B048                        mov al, 'H'
+     6 00000004 CD10                        int 0x10
+     7 00000006 B065                        mov al, 'e'
+     8 00000008 CD10                        int 0x10
+     9 0000000A B06C                        mov al, 'l'
+    10 0000000C CD10                        int 0x10
+    11 0000000E CD10                        int 0x10
+    12 00000010 B06F                        mov al, 'o'
+    13 00000012 CD10                        int 0x10
+    14                                  
+    15 00000014 EBFE                        jmp $
+    16                                  
+    17                                  ; Fill with 510 zeros minus the size of the previous code
+    18 00000016 00<rept>                times 510-($-$$) db 0
+    19                                  ; Magic number
+    20 000001FE 55AA                    dw 0xaa55 
+    21                                  
+    22                                  

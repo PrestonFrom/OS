@@ -1,0 +1,23 @@
+     1                                  [org 0x7C00]
+     2                                  
+     3 00000000 B40E                    mov ah, 0x0e
+     4 00000002 B0[14]                  mov al, the_secret
+     5 00000004 CD10                    int 0x10
+     6 00000006 A0[1400]                mov al, [the_secret]
+     7 00000009 CD10                    int 0x10
+     8 0000000B BB[1400]                mov bx, the_secret
+     9                                  ;add bx, 0x7C00
+    10 0000000E 8A07                    mov al, [bx]
+    11 00000010 CD10                    int 0x10
+    12                                  
+    13                                  ; This is an infinite loop. It works because $ evaluates to the beginning of the current line
+    14 00000012 EBFE                    jmp $ 
+    15                                  
+    16                                  the_secret:
+    17 00000014 58                          db "X"
+    18                                  
+    19                                  ; BOOT SECTOR SIZE + MAGIC WORD
+    20 00000015 00<rept>                times 510-($-$$) db 0
+    21 000001FE 55AA                    dw 0xaa55 
+    22                                  
+    23                                  

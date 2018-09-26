@@ -1,0 +1,51 @@
+     1 00000000 B40E                    mov ah, 0x0e
+     2                                  
+     3                                  ; attempt 1
+     4                                  ; Fails because it tries to print the memory address (i.e. pointer)
+     5                                  ; not its actual contents
+     6 00000002 B031                    mov al, "1"
+     7 00000004 CD10                    int 0x10
+     8 00000006 B0[2D]                  mov al, the_secret
+     9 00000008 CD10                    int 0x10
+    10                                  
+    11                                  ; attempt 2
+    12                                  ; It tries to print the memory address of 'the_secret' which is the correct approach.
+    13                                  ; However, BIOS places our bootsector binary at address 0x7c00
+    14                                  ; so we need to add that padding beforehand. We'll do that in attempt 3
+    15 0000000A B032                    mov al, "2"
+    16 0000000C CD10                    int 0x10
+    17 0000000E A0[2D00]                mov al, [the_secret]
+    18 00000011 CD10                    int 0x10
+    19                                  
+    20                                  ; attempt 3
+    21                                  ; Add the BIOS starting offset 0x7c00 to the memory address of the X
+    22                                  ; and then dereference the contents of that pointer.
+    23                                  ; We need the help of a different register 'bx' because 'mov al, [ax]' is illegal.
+    24                                  ; A register can't be used as source and destination for the same command.
+    25 00000013 B033                    mov al, "3"
+    26 00000015 CD10                    int 0x10
+    27 00000017 BB[2D00]                mov bx, the_secret
+    28 0000001A 81C3007C                add bx, 0x7c00
+    29 0000001E 8A07                    mov al, [bx]
+    30 00000020 CD10                    int 0x10
+    31                                  
+    32                                  ; attempt 4
+    33                                  ; We try a shortcut since we know that the X is stored at byte 0x2d in our binary
+    34                                  ; That's smart but ineffective, we don't want to be recounting label offsets
+    35                                  ; every time we change the code
+    36 00000022 B034                    mov al, "4"
+    37 00000024 CD10                    int 0x10
+    38 00000026 A02D7C                  mov al, [0x7c2d]
+    39 00000029 CD10                    int 0x10
+    40                                  
+    41                                  
+    42 0000002B EBFE                    jmp $ ; infinite loop
+    43                                  
+    44                                  the_secret:
+    45                                      ; ASCII code 0x58 ('X') is stored just before the zero-padding.
+    46                                      ; On this code that is at byte 0x2d (check it out using 'xxd file.bin')
+    47 0000002D 58                          db "X"
+    48                                  
+    49                                  ; zero padding and magic bios number
+    50 0000002E 00<rept>                times 510-($-$$) db 0
+    51 000001FE 55AA                    dw 0xaa55

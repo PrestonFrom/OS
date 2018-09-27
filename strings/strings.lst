@@ -1,0 +1,30 @@
+     1                                  ; This simple boot sector will print the string at the label "the_string"
+     2                                  
+     3                                  ; Set offset address
+     4                                  [org 0x7C00]
+     5                                  
+     6                                  ; This sets us up to print.
+     7                                  preprint:
+     8 00000000 B40E                        mov ah, 0x0e                ; Put us into TTY mode
+     9 00000002 A0[1500]                    mov al, [the_string]        ; Move the contents of the first character in the_string to al
+    10 00000005 BB0000                      mov bx, 0                   ; bx will hold the offset from the address of the_string
+    11                                  
+    12                                  print:
+    13 00000008 CD10                        int 0x10                    ; Call interrupt 0x10 to print whatever is in al
+    14 0000000A 83C301                      add bx, 1                   ; Increment bx by 1 to move to the next character
+    15 0000000D 8A87[1500]                  mov al, [the_string + bx]   ; Move the contents of the next chracter into al
+    16 00000011 3C00                        cmp al, 0x00                ; Check if al now contains the null character '0x00'...
+    17 00000013 75F3                        jne print                   ; ...if it does not, jump to the to print to continue for 
+    18                                                                  ; the next character
+    19                                  the_string:
+    20 00000015 48656C6C6F21205765-         db "Hello! Welcome to an operating system.",0
+    20 0000001E 6C636F6D6520746F20-
+    20 00000027 616E206F7065726174-
+    20 00000030 696E67207379737465-
+    20 00000039 6D2E00             
+    21                                  
+    22                                  ; BOOT SECTOR SIZE + MAGIC WORD
+    23 0000003C 00<rept>                times 510-($-$$) db 0
+    24 000001FE 55AA                    dw 0xaa55 
+    25                                  
+    26                                  

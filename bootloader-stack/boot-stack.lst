@@ -1,0 +1,83 @@
+     1 00000000 B40E                    mov ah, 0x0e
+     2                                  
+     3                                  ; Set the stack "bottom"
+     4 00000002 BD0080                  mov bp, 0x8000
+     5                                  ; And since there's nothing in the stack, set the stack pointer to the same location
+     6 00000005 89EC                    mov sp, bp
+     7                                  
+     8                                  ; Push "A" to the top of the stack -- note that the stack grows down, so this is
+     9                                  ; actually stored in 0x7FFE (i.e. 0x8000 - 2).
+    10                                  ; This memory can also be accessed directly using 0x7FFE.
+    11 00000007 6A41                    push 'A'
+    12                                  ; Push "B" to the top of the stack
+    13                                  ; Still growing down, so now 0x7FFC (i.e. 0x8000 - 4)
+    14 00000009 6A42                    push 'B'
+    15                                  ; Push "B" to the top of the stack
+    16                                  ; Still growing down, so now 0x7FFA (i.e. 0x8000 - 6)
+    17 0000000B 6A43                    push 'C'
+    18                                  
+    19                                  ; Get the characters out of the stack by accessing the directly!
+    20                                  ; This prints "ABC"
+    21 0000000D A0FE7F                  mov al, [0x7FFE]
+    22 00000010 CD10                    int 0x10
+    23 00000012 A0FC7F                  mov al, [0x7FFC]
+    24 00000015 CD10                    int 0x10
+    25 00000017 A0FA7F                  mov al, [0x7FFA]
+    26 0000001A CD10                    int 0x10
+    27                                  
+    28                                  ; And in case you were skeptical, now you can see that there's nothing in at 
+    29                                  ; the "base" of the stack...
+    30 0000001C A00080                  mov al, [0x8000]
+    31 0000001F CD10                    int 0x10
+    32                                  
+    33                                  ; Next, let's pop everything out of the stack.
+    34                                  ; Since the stack is using 16-bits, we pop to bx (which is a 16-bit register) and then
+    35                                  ; mov the lower 8 bits of bx (i.e. from bl) to al.
+    36                                  ; And then print with interrupt 0x10
+    37 00000021 5B                      pop bx
+    38 00000022 88D8                    mov al, bl
+    39 00000024 CD10                    int 0x10
+    40                                  
+    41                                  ; Same as above!
+    42 00000026 5B                      pop bx
+    43 00000027 88D8                    mov al, bl
+    44 00000029 CD10                    int 0x10
+    45                                  
+    46                                  ; Same as above!
+    47 0000002B 5B                      pop bx
+    48 0000002C 88D8                    mov al, bl
+    49 0000002E CD10                    int 0x10
+    50                                  
+    51                                  ; Still nothing in the memory pointed to by the stack's base pointer.
+    52 00000030 A00080                  mov al, [0x8000]
+    53 00000033 CD10                    int 0x10
+    54                                  
+    55                                  ; If you print from the memory addresses that were previously part of the stack,
+    56                                  ; you now get junk!
+    57 00000035 A0FE7F                  mov al, [0x7FFE]
+    58 00000038 CD10                    int 0x10
+    59 0000003A A0FC7F                  mov al, [0x7FFC]
+    60 0000003D CD10                    int 0x10
+    61 0000003F A0FA7F                  mov al, [0x7FFA]
+    62 00000042 CD10                    int 0x10
+    63                                  
+    64                                  ; Still nothing in the memory pointed to by the stack's base pointer.
+    65 00000044 A00080                  mov al, [0x8000]
+    66 00000047 CD10                    int 0x10
+    67                                  
+    68                                  ; But if you push back into the stack, there's stuff there again!
+    69 00000049 6A41                    push 'A'
+    70 0000004B 6A42                    push 'B'
+    71 0000004D 6A43                    push 'C'
+    72                                  
+    73 0000004F A0FE7F                  mov al, [0x7FFE]
+    74 00000052 CD10                    int 0x10
+    75 00000054 A0FC7F                  mov al, [0x7FFC]
+    76 00000057 CD10                    int 0x10
+    77 00000059 A0FA7F                  mov al, [0x7FFA]
+    78 0000005C CD10                    int 0x10
+    79                                  
+    80                                  ; Infinite loop and boot sector memory magic!
+    81 0000005E EBFE                    jmp $
+    82 00000060 00<rept>                times 510-($-$$) db 0
+    83 000001FE 55AA                    dw 0xaa55

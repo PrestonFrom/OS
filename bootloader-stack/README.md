@@ -1,0 +1,1 @@
+This is based on section 3.4.4 in the OS dev pdf (Based on https://github.com/cfenollosa/os-tutorial/) and section 4 (bootsector-stack) of the OS tutorial GitHub page (https://github.com/cfenollosa/os-tutorial/).

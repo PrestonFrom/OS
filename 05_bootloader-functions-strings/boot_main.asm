@@ -1,4 +1,3 @@
-
 ; This simple bootsector prints stuff!
 
 [org 0x7c00]

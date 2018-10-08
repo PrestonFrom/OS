@@ -1,0 +1,20 @@
+     1                                  [org 0x7c00]
+     2                                  
+     3                                  %include "../05_bootloader-functions-strings/boot_include_file.asm"
+     1                              <1> [org 0x7c00]
+     2                              <1> 
+     3                              <1> preprint:
+     4 00000000 60                  <1>     pusha           ; Save all the registers!
+     5 00000001 B40E                <1>     mov ah, 0x0e    ; Put us in TTY mode
+     6 00000003 8A07                <1>     mov al, [bx]    ; Copy the first character to al register for printing
+     7                              <1> 
+     8                              <1> print:
+     9 00000005 CD10                <1>     int 0x10        ; Print whatever is in al
+    10 00000007 83C301              <1>     add bx, 1       ; Increment the "pointer" to point to the next character in the string
+    11 0000000A 8A07                <1>     mov al, [bx]    ; Copy the next character into al
+    12 0000000C 3C00                <1>     cmp al, 0x00    ; Check if al now contains a null character
+    13 0000000E 75F5                <1>     jne print       ; If al does not contain a null character, loop back to print
+    14 00000010 61                  <1>     popa            ; Restore the registers
+    15 00000011 C3                  <1>     ret             ; Return to where we were called
+    16                              <1> 
+    17                              <1> 

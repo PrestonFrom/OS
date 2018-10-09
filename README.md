@@ -9,7 +9,7 @@ Other useful resources:
 
 <br><br>
 For ease of use, add this to your bashrc:
-alias qemu="echo 'USING qemu-system-x86_64!!!!' && qemu-system-x86_64 "
+
 ```bash
 alias qemu="echo 'USING qemu-system-x86_64!!!!' && qemu-system-x86_64 "
 nasm_and_run() {

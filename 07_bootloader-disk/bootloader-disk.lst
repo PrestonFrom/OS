@@ -1,0 +1,130 @@
+     1                                  ;[org 0x7c00]
+     2 00000000 BD0080                  mov bp, 0x8000  ; Set stack base pointer far away
+     3 00000003 89EC                    mov sp, bp      ; Set stack pointer to base pointer because stack is empty
+     4                                  
+     5 00000005 BB0090                  mov bx, 0x9000  ;
+     6 00000008 B602                    mov dh, 2       ; Read 2 sectors
+     7 0000000A E86000                  call disk_load
+     8                                  
+     9 0000000D 8B160090                mov dx, [0x9000]
+    10 00000011 E80900                  call prehex
+    11                                  
+    12 00000014 8B160092                mov dx, [0x9000 + 512]
+    13 00000018 E80200                  call prehex
+    14                                  
+    15 0000001B EBFE                    jmp $
+    16                                  
+    17                                  %include "../05_bootloader-functions-print-hex/print_hex.asm"
+     1                              <1> [org 0x7c00]
+     2                              <1> 
+     3                              <1> prehex:
+     4 0000001D 60                  <1>     pusha                   ; Save all the registers!
+     5 0000001E B40E                <1>     mov ah, 0x0e            ; Put us in TTY mode
+     6 00000020 B90000              <1>     mov cx, 0               ; cx is loop counter
+     7                              <1>     
+     8                              <1> hex_loop:
+     9 00000023 83F904              <1>     cmp cx, 4               ; loop 4 times
+    10 00000026 741C                <1>     je  done
+    11                              <1>     
+    12 00000028 89D0                <1>     mov ax, dx              ; dx holds the value to hexify, ax is where do work
+    13 0000002A 83E00F              <1>     and ax, 0x000f          ; get the last 16 bits
+    14 0000002D 0430                <1>     add al, 0x30            ; Convert to number
+    15 0000002F 3C39                <1>     cmp al, 0x39            ; If the conversion is actually a number...
+    16 00000031 7E02                <1>     jle add_to_string       ; ...add it to the string
+    17 00000033 0407                <1>     add al, 7               ; Otherwise, we need to add 7 to bump it up to A-F
+    18                              <1> 
+    19                              <1> add_to_string:
+    20 00000035 BB[5100]            <1>     mov bx, HEX_OUT + 5     ; Get the address of last byte in HEX_OUT into bx
+    21 00000038 29CB                <1>     sub bx, cx              ; Move to the left from the end by the number in the counter
+    22 0000003A 8807                <1>     mov [bx], al            ; Set the value pointed at by bx to whatever is in al
+    23 0000003C C1CA04              <1>     ror dx, 4               ; Rotate dx to the right four places to get the next item
+    24                              <1> 
+    25 0000003F 83C101              <1>     add cx, 1               ; Increment the loop counter
+    26 00000042 EBDF                <1>     jmp hex_loop            ; Go back to the beginning of the loop
+    27                              <1> 
+    28                              <1> done:
+    29 00000044 BB[4C00]            <1>     mov bx, HEX_OUT         ; Move the address of HEX_OUT to bx
+    30 00000047 E80900              <1>     call preprint           ; Now print the string in HEX_OUT
+    31                              <1> 
+    32                              <1> 
+    33 0000004A 61                  <1>     popa                    ; Restore the registers
+    34 0000004B C3                  <1>     ret                     ; Return to where we were called
+    35                              <1> 
+    36                              <1> HEX_OUT:
+    37 0000004C 30783030303000      <1>     db '0x0000', 0
+    38                              <1> 
+    39                              <1> 
+    40                              <1> 
+    18                                  %include "../05_bootloader-functions-print-hex/boot_include_file.asm"
+     1                              <1> [org 0x7c00]
+     2                              <1> 
+     3                              <1> preprint:
+     4 00000053 60                  <1>     pusha           ; Save all the registers!
+     5 00000054 B40E                <1>     mov ah, 0x0e    ; Put us in TTY mode
+     6 00000056 8A07                <1>     mov al, [bx]    ; Copy the first character to al register for printing
+     7                              <1> 
+     8                              <1> print:
+     9 00000058 CD10                <1>     int 0x10        ; Print whatever is in al
+    10 0000005A 83C301              <1>     add bx, 1       ; Increment the "pointer" to point to the next character in the string
+    11 0000005D 8A07                <1>     mov al, [bx]    ; Copy the next character into al
+    12 0000005F 3C00                <1>     cmp al, 0x00    ; Check if al now contains a null character
+    13 00000061 75F5                <1>     jne print       ; If al does not contain a null character, loop back to print
+    14                              <1> 
+    15 00000063 B40A                <1>     mov ah, 0x0a
+    16 00000065 CD10                <1>     int 0x10
+    17 00000067 B40D                <1>     mov ah, 0x0d
+    18 00000069 CD10                <1>     int 0x10
+    19                              <1> 
+    20 0000006B 61                  <1>     popa            ; Restore the registers
+    21 0000006C C3                  <1>     ret             ; Return to where we were called
+    22                              <1> 
+    23                              <1> 
+    19                                  %include "bootloader-sect-disk.asm"
+     1                              <1> disk_load:
+     2 0000006D 60                  <1>     pusha                   ; Save all general purpose registers
+     3 0000006E 52                  <1>     push dx                 ; We'll 
+     4                              <1> 
+     5 0000006F B402                <1>     mov ah, 0x02
+     6 00000071 88F0                <1>     mov al, dh
+     7 00000073 B102                <1>     mov cl, 0x02
+     8                              <1> 
+     9 00000075 B500                <1>     mov ch, 0x00
+    10 00000077 B600                <1>     mov dh, 0x00
+    11                              <1> 
+    12 00000079 CD13                <1>     int 0x13
+    13 0000007B 7207                <1>     jc disk_error
+    14                              <1> 
+    15 0000007D 5A                  <1>     pop dx
+    16 0000007E 38F0                <1>     cmp al, dh
+    17 00000080 750F                <1>     jne sectors_error
+    18                              <1> 
+    19 00000082 61                  <1>     popa
+    20 00000083 C3                  <1>     ret
+    21                              <1> 
+    22                              <1> disk_error:
+    23 00000084 BB[9900]            <1>     mov bx, DISK_ERROR
+    24 00000087 E8C9FF              <1>     call preprint
+    25 0000008A 88E6                <1>     mov dh, ah
+    26 0000008C E88EFF              <1>     call prehex
+    27 0000008F EB06                <1>     jmp disk_loop
+    28                              <1> 
+    29                              <1> sectors_error:
+    30 00000091 BB[A900]            <1>     mov bx, SECTORS_ERROR
+    31 00000094 E8C1FF              <1>     call print
+    32                              <1> 
+    33                              <1> disk_loop:
+    34 00000097 EBFE                <1>     jmp $
+    35                              <1> 
+    36 00000099 4469736B2072656164- <1> DISK_ERROR: db "Disk read error", 0
+    36 000000A2 206572726F7200      <1>
+    37 000000A9 496E636F7272656374- <1> SECTORS_ERROR: db "Incorrect number of sectors read", 0
+    37 000000B2 206E756D626572206F- <1>
+    37 000000BB 6620736563746F7273- <1>
+    37 000000C4 207265616400        <1>
+    20                                  
+    21 000000CA 00<rept>                times 510 - ($ - $$) db 0
+    22 000001FE 55AA                    dw 0xaa55
+    23                                  
+    24 00000200 DADA<rept>              times 256 dw 0xdada
+    25 00000400 CEFA<rept>              times 256 dw 0xface
+    26                                  

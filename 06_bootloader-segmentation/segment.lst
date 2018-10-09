@@ -10,25 +10,36 @@
     10                                  
     11 0000000C BBC007                  mov bx, 0x7c0                   ; We use 0x7c0 instead of 0x7c0 because it automatically
     12                                                                  ; shifts 4 bits to the left for us. 
-    13                                                                  ; (Don't know why though...)
-    14 0000000F 8EDB                    mov ds, bx                      ; Can't set ds directly (have to use another general-purpose 
-    15                                                                  ; register). All memory references now use offset in ds.
-    16 00000011 A0[2900]                mov al, [the_secret]
-    17 00000014 CD10                    int 0x10
-    18                                  
-    19 00000016 26A0[2900]              mov al, [es:the_secret]         ; This will not work yet because es is still 0x0000
-    20 0000001A CD10                    int 0x10                    
-    21                                  
-    22                                  ; But if we set es to 0x7c00 (we only move in 0x7c0 though), it will work!
-    23 0000001C BBC007                  mov bx, 0x7c0
-    24 0000001F 8EC3                    mov es, bx
-    25 00000021 26A0[2900]              mov al, [es:the_secret]
-    26 00000025 CD10                    int 0x10
-    27                                  
-    28 00000027 EBFE                    jmp $
+    13                                                                  ; OS Dev PDF explains why!
+    14                                                                  ; To calculate the absolute address the CPU multiplies the 
+    15                                                                  ; value in the segment register by 16 and then adds your 
+    16                                                                  ; offset address; and because we are working with hexadecimal,
+    17                                                                  ; when we multiple a number by 16, we simply shift it a digit 
+    18                                                                  ; to the left (e.g. 0x42 * 16 = 0x420). So if we set ds to 
+    19                                                                  ; 0x4d and then issue the statement mov ax, [0x20], the
+    20                                                                  ; value stored in ax will actually be loaded from address 
+    21                                                                  ; 0x4d0 (16 * 0x4d + 0x20).
+    22                                  
+    23 0000000F 8EDB                    mov ds, bx                      ; We can't set ds directly, so we use another general-purpose 
+    24                                                                  ; register. All memory references now use offset in ds.
+    25                                  
+    26 00000011 A0[2900]                mov al, [the_secret]            ; Now we can easily access the secret!
+    27 00000014 CD10                    int 0x10
+    28                                  
     29                                  
-    30                                  the_secret:
-    31 00000029 58                          db "X"
+    30 00000016 26A0[2900]              mov al, [es:the_secret]         ; This will not work yet because es is still 0x0000
+    31 0000001A CD10                    int 0x10                    
     32                                  
-    33 0000002A 00<rept>                times 510 - ($ - $$) db 0
-    34 000001FE 55AA                    dw 0xaa55
+    33                                  ; But if we set es to 0x7c00 (we only move in 0x7c0 though), it will work!
+    34 0000001C BBC007                  mov bx, 0x7c0
+    35 0000001F 8EC3                    mov es, bx
+    36 00000021 26A0[2900]              mov al, [es:the_secret]
+    37 00000025 CD10                    int 0x10
+    38                                  
+    39 00000027 EBFE                    jmp $
+    40                                  
+    41                                  the_secret:
+    42 00000029 58                          db "X"
+    43                                  
+    44 0000002A 00<rept>                times 510 - ($ - $$) db 0
+    45 000001FE 55AA                    dw 0xaa55

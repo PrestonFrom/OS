@@ -1,45 +1,80 @@
-; Here comes the GDT!
-gdt_start:
+; ; Here comes the GDT!
+; gdt_start:
+; 
+; gdt_null:           ; The GDT must start with a null descriptor
+;     dd 0x0          ; dd is used to define a double word, which is 4 bytes
+;     dd 0x0
+; 
+; gdt_code:       ; This is the code segment descriptor
+;     ; base = 0x0, limit = 0xfffff
+;     ; First flags:  present (1) privilege (00) descriptor type (1) -> 1001b (b is for binary)
+;     ; Type flags:   code (1) conforming (0) readable (1) accessed (0) -> 1010b
+;     ; Second flags: granularity (1) 32-bit default (1) 64-bit segments (0) AVL (0) -> 1100b
+;     dw 0xffff       ; limit (bits 0-15)
+;     dw 0x0          ; Base (bits 0-15)
+;     dw 0x0          ; Base (bits 16-23)
+;     db 10011010b    ; first flags and type flags
+;     db 11001111b    ; second flags and limit (bits 16-19)
+;     db 0x0          ; Base (bits 24-31)
+; 
+; gdt_data:       ; This is the data segment descriptor
+;     ; Same as the code segment descriptor except for type flags
+;     ; Type flags:   code (0) expand down (0) writable (1) accessed (0) -> 0010b
+;     dw 0xffff       ; limit (bits 0-15)
+;     dw 0x0          ; Base (bits 0-15)
+;     dw 0x0          ; Base (bits 16-23)
+;     db 10010010b    ; first flags and type flags
+;     db 11001111b    ; second flags and limit (bits 16-19)
+;     db 0x0          ; Base (bits 24-31)
+; 
+; gdt_end:        ; This label makes it easy to calculate the size 
+;                 ; of the GDT for the GDT descriptor
+; 
+; gdt_descriptor:
+;     dw gdt_end - gdt_start - 1  ; The size of the GDT is always 1 less than true size
+;     dd gdt_start                ; Start address of the GDT
+; 
+; ; This comment is copy-and-pasted from the PDF
+; ; Define some handy constants for the GDT segment descriptor offsets , which
+; ; are what segment registers must contain when in protected mode. For example ,
+; ; when we set DS = 0 x10 in PM , the CPU knows that we mean it to use the
+; ; segment described at offset 0 x10 ( i.e. 16 bytes ) in our GDT , which in our
+; ; case is the DATA segment (0 x0 -> NULL ; 0x08 -> CODE ; 0 x10 -> DATA )
+; CODE_SEG equ gdt_code - gdt_start
+; DATA_SEG equ gdt_data - gdt_start
+    
+gdt_start: ; don't remove the labels, they're needed to compute sizes and jumps
+    ; the GDT starts with a null 8-byte
+    dd 0x0 ; 4 byte
+    dd 0x0 ; 4 byte
 
-gdt_null:           ; The GDT must start with a null descriptor
-    dd 0x0          ; dd is used to define a double word, which is 4 bytes
-    dd 0x0
+; GDT for code segment. base = 0x00000000, length = 0xfffff
+; for flags, refer to os-dev.pdf document, page 36
+gdt_code: 
+    dw 0xffff    ; segment length, bits 0-15
+    dw 0x0       ; segment base, bits 0-15
+    db 0x0       ; segment base, bits 16-23
+    db 10011010b ; flags (8 bits)
+    db 11001111b ; flags (4 bits) + segment length, bits 16-19
+    db 0x0       ; segment base, bits 24-31
 
-gdt_code:       ; This is the code segment descriptor
-    ; base = 0x0, limit = 0xfffff
-    ; First flags:  present (1) privilege (00) descriptor type (1) -> 1001b (b is for binary)
-    ; Type flags:   code (1) conforming (0) readable (1) accessed (0) -> 1010b
-    ; Second flags: granularity (1) 32-bit default (1) 64-bit segments (0) AVL (0) -> 1100b
-    dw 0xffff       ; limit (bits 0-15)
-    dw 0x0          ; Base (bits 0-15)
-    dw 0x0          ; Base (bits 16-23)
-    db 10011010b    ; first flags and type flags
-    db 11001111b    ; second flags and limit (bits 16-19)
-    db 0x0          ; Base (bits 24-31)
+; GDT for data segment. base and length identical to code segment
+; some flags changed, again, refer to os-dev.pdf
+gdt_data:
+    dw 0xffff
+    dw 0x0
+    db 0x0
+    db 10010010b
+    db 11001111b
+    db 0x0
 
-gdt_data:       ; This is the data segment descriptor
-    ; Same as the code segment descriptor except for type flags
-    ; Type flags:   code (0) expand down (0) writable (1) accessed (0) -> 0010b
-    dw 0xffff       ; limit (bits 0-15)
-    dw 0x0          ; Base (bits 0-15)
-    dw 0x0          ; Base (bits 16-23)
-    db 10010010b    ; first flags and type flags
-    db 11001111b    ; second flags and limit (bits 16-19)
-    db 0x0          ; Base (bits 24-31)
+gdt_end:
 
-gdt_end:        ; This label makes it easy to calculate the size 
-                ; of the GDT for the GDT descriptor
-
+; GDT descriptor
 gdt_descriptor:
-    dw gdt_end - gdt_start - 1  ; The size of the GDT is always 1 less than true size
-    dd gdt_start                ; Start address of the GDT
+    dw gdt_end - gdt_start - 1 ; size (16 bit), always one less of its true size
+    dd gdt_start ; address (32 bit)
 
-; This comment is copy-and-pasted from the PDF
-; Define some handy constants for the GDT segment descriptor offsets , which
-; are what segment registers must contain when in protected mode. For example ,
-; when we set DS = 0 x10 in PM , the CPU knows that we mean it to use the
-; segment described at offset 0 x10 ( i.e. 16 bytes ) in our GDT , which in our
-; case is the DATA segment (0 x0 -> NULL ; 0x08 -> CODE ; 0 x10 -> DATA )
+; define some constants for later use
 CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
-    

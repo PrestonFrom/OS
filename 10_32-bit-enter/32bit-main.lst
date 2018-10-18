@@ -1,331 +1,166 @@
-     1                                  ; ; This file is essentially copied from 
-     2                                  ; ; https://github.com/cfenollosa/os-tutorial/tree/master/10-32bit-enter
-     3                                  ; 
-     4                                  ; [org 0x7c00]                    ; bootloader offset
-     5                                  ;     mov     bp, 0x9000          ; Set stack
-     6                                  ;     mov     sp, bp
-     7                                  ; 
-     8                                  ;     mov     bx, MSG_REAL_MODE   ; Print the real mode message
-     9                                  ;     call    print
-    10                                  ; 
-    11                                  ;     call    switch_to_pm        ; This is in boot_print_func.asm
-    12                                  ;     jmp     $                   ; Should never actually get here...
-    13                                  ; 
-    14                                  ; %include "../05_bootloader-functions-strings/print.asm"
-    15                                  ; %include "../09_32bit-gdt/32bit-gdt.asm"
-    16                                  ; %include "../08_32bit-printing/32bit_print.asm"
-    17                                  ; %include "32bit-switch.asm"
-    18                                  ; 
-    19                                  ; [bits 32]
-    20                                  ; BEGIN_PM:
-    21                                  ;     mov     ebx, MSG_PROT_MODE  ; Print 32 bit mode message
-    22                                  ;     call    print_string_pm
-    23                                  ;     jmp     $                   ; Loop here forever
-    24                                  ; 
-    25                                  ; MSG_REAL_MODE db "Started in 16-bit real mode", 0
-    26                                  ; MSG_PROT_MODE db "Loaded 32-bit protected mode", 0
-    27                                  ; 
-    28                                  ; ; bootsector
-    29                                  ; times 510-($-$$) db 0
-    30                                  ; dw 0xaa55
-    31                                  
-    32                                  
-    33                                  [org 0x7c00] ; bootloader offset
-    34 00000000 BD0090                      mov bp, 0x9000 ; set the stack
-    35 00000003 89EC                        mov sp, bp
-    36                                  
-    37 00000005 BB[A300]                    mov bx, MSG_REAL_MODE
-    38 00000008 E80500                      call print ; This will be written after the BIOS messages
-    39                                  
-    40 0000000B E85A00                      call switch_to_pm
-    41 0000000E EBFE                        jmp $ ; this will actually never be executed
-    42                                  
-    43                                  %include "../05_bootloader-functions-strings/print.asm"
-     1                              <1> ; ; This simple bootsector prints stuff!
-     2                              <1> ; 
-     3                              <1> ; [org 0x7c00]
-     4                              <1> ; 
-     5                              <1> ; jmp start           ; We need to jump over the print label so we don't automatically 
-     6                              <1> ;                     ; run the "function"
-     7                              <1> ; 
-     8                              <1> ; preprint:
-     9                              <1> ;     pusha           ; Save all the registers!
-    10                              <1> ;     mov ah, 0x0e    ; Put us in TTY mode
-    11                              <1> ;     mov al, [bx]    ; Copy the first character to al register for printing
-    12                              <1> ; 
-    13                              <1> ; print:
-    14                              <1> ;     int 0x10        ; Print whatever is in al
-    15                              <1> ;     add bx, 1       ; Increment the "pointer" to point to the next character in the string
-    16                              <1> ;     mov al, [bx]    ; Copy the next character into al
-    17                              <1> ;     cmp al, 0x00    ; Check if al now contains a null character
-    18                              <1> ;     jne print       ; If al does not contain a null character, loop back to print
-    19                              <1> ;     popa            ; Restore the registers
-    20                              <1> ;     ret             ; Return to where we were called
-    21                              <1> ; 
-    22                              <1> ; start:
-    23                              <1> ;     mov bp, 0x8000  ; Set the stack's base pointer
-    24                              <1> ;     mov sp, bp      ; And set the stack pointer to the same location
-    25                              <1> ; 
-    26                              <1> ;     mov bx, the_string      ; Store the address of the_string in bx to be accessed by preprint
-    27                              <1> ;     call preprint           ; Call the print function!
-    28                              <1> ;     mov bx, another_string  ; Repeat for another_string
-    29                              <1> ;     call preprint           ; Call it again
-    30                              <1> ; 
-    31                              <1> ; 
-    32                              <1> ; the_string:
-    33                              <1> ;     db "This is a string to print. ",0
-    34                              <1> ; 
-    35                              <1> ; another_string:
-    36                              <1> ;     db "Here's another one!",0
-    37                              <1> ; 
-    38                              <1> ; 
-    39                              <1> ; jmp $ ; infinite loop
-    40                              <1> ; 
-    41                              <1> ; ; zero padding and magic bios number
-    42                              <1> ; times 510-($-$$) db 0
-    43                              <1> ; dw 0xaa55
-    44                              <1> 
-    45                              <1> print:
-    46 00000010 60                  <1>     pusha
-    47                              <1> 
-    48                              <1> ; keep this in mind:
-    49                              <1> ; while (string[i] != 0) { print string[i]; i++ }
-    50                              <1> 
-    51                              <1> ; the comparison for string end (null byte)
-    52                              <1> start:
-    53 00000011 8A07                <1>     mov al, [bx] ; 'bx' is the base address for the string
-    54 00000013 3C00                <1>     cmp al, 0
-    55 00000015 7409                <1>     je done
-    56                              <1> 
-    57                              <1>     ; the part where we print with the BIOS help
-    58 00000017 B40E                <1>     mov ah, 0x0e
-    59 00000019 CD10                <1>     int 0x10 ; 'al' already contains the char
-    60                              <1> 
-    61                              <1>     ; increment pointer and do next loop
-    62 0000001B 83C301              <1>     add bx, 1
-    63 0000001E EBF1                <1>     jmp start
-    64                              <1> 
-    65                              <1> done:
-    66 00000020 61                  <1>     popa
-    67 00000021 C3                  <1>     ret
-    68                              <1> 
-    69                              <1> 
-    70                              <1> 
-    71                              <1> print_nl:
-    72 00000022 60                  <1>     pusha
-    73                              <1> 
-    74 00000023 B40E                <1>     mov ah, 0x0e
-    75 00000025 B00A                <1>     mov al, 0x0a ; newline char
-    76 00000027 CD10                <1>     int 0x10
-    77 00000029 B00D                <1>     mov al, 0x0d ; carriage return
-    78 0000002B CD10                <1>     int 0x10
-    79                              <1> 
-    80 0000002D 61                  <1>     popa
-    81 0000002E C3                  <1>     ret
-    44                                  %include "../09_32bit-gdt/32bit-gdt.asm"
-     1                              <1> ; ; Here comes the GDT!
-     2                              <1> ; gdt_start:
-     3                              <1> ; 
-     4                              <1> ; gdt_null:           ; The GDT must start with a null descriptor
-     5                              <1> ;     dd 0x0          ; dd is used to define a double word, which is 4 bytes
-     6                              <1> ;     dd 0x0
-     7                              <1> ; 
-     8                              <1> ; gdt_code:       ; This is the code segment descriptor
-     9                              <1> ;     ; base = 0x0, limit = 0xfffff
-    10                              <1> ;     ; First flags:  present (1) privilege (00) descriptor type (1) -> 1001b (b is for binary)
-    11                              <1> ;     ; Type flags:   code (1) conforming (0) readable (1) accessed (0) -> 1010b
-    12                              <1> ;     ; Second flags: granularity (1) 32-bit default (1) 64-bit segments (0) AVL (0) -> 1100b
-    13                              <1> ;     dw 0xffff       ; limit (bits 0-15)
-    14                              <1> ;     dw 0x0          ; Base (bits 0-15)
-    15                              <1> ;     dw 0x0          ; Base (bits 16-23)
-    16                              <1> ;     db 10011010b    ; first flags and type flags
-    17                              <1> ;     db 11001111b    ; second flags and limit (bits 16-19)
-    18                              <1> ;     db 0x0          ; Base (bits 24-31)
-    19                              <1> ; 
-    20                              <1> ; gdt_data:       ; This is the data segment descriptor
-    21                              <1> ;     ; Same as the code segment descriptor except for type flags
-    22                              <1> ;     ; Type flags:   code (0) expand down (0) writable (1) accessed (0) -> 0010b
-    23                              <1> ;     dw 0xffff       ; limit (bits 0-15)
-    24                              <1> ;     dw 0x0          ; Base (bits 0-15)
-    25                              <1> ;     dw 0x0          ; Base (bits 16-23)
-    26                              <1> ;     db 10010010b    ; first flags and type flags
-    27                              <1> ;     db 11001111b    ; second flags and limit (bits 16-19)
-    28                              <1> ;     db 0x0          ; Base (bits 24-31)
-    29                              <1> ; 
-    30                              <1> ; gdt_end:        ; This label makes it easy to calculate the size 
-    31                              <1> ;                 ; of the GDT for the GDT descriptor
-    32                              <1> ; 
-    33                              <1> ; gdt_descriptor:
-    34                              <1> ;     dw gdt_end - gdt_start - 1  ; The size of the GDT is always 1 less than true size
-    35                              <1> ;     dd gdt_start                ; Start address of the GDT
-    36                              <1> ; 
-    37                              <1> ; ; This comment is copy-and-pasted from the PDF
-    38                              <1> ; ; Define some handy constants for the GDT segment descriptor offsets , which
-    39                              <1> ; ; are what segment registers must contain when in protected mode. For example ,
-    40                              <1> ; ; when we set DS = 0 x10 in PM , the CPU knows that we mean it to use the
-    41                              <1> ; ; segment described at offset 0 x10 ( i.e. 16 bytes ) in our GDT , which in our
-    42                              <1> ; ; case is the DATA segment (0 x0 -> NULL ; 0x08 -> CODE ; 0 x10 -> DATA )
-    43                              <1> ; CODE_SEG equ gdt_code - gdt_start
-    44                              <1> ; DATA_SEG equ gdt_data - gdt_start
-    45                              <1>     
-    46                              <1> gdt_start: ; don't remove the labels, they're needed to compute sizes and jumps
-    47                              <1>     ; the GDT starts with a null 8-byte
-    48 0000002F 00000000            <1>     dd 0x0 ; 4 byte
-    49 00000033 00000000            <1>     dd 0x0 ; 4 byte
-    50                              <1> 
-    51                              <1> ; GDT for code segment. base = 0x00000000, length = 0xfffff
-    52                              <1> ; for flags, refer to os-dev.pdf document, page 36
-    53                              <1> gdt_code: 
-    54 00000037 FFFF                <1>     dw 0xffff    ; segment length, bits 0-15
-    55 00000039 0000                <1>     dw 0x0       ; segment base, bits 0-15
-    56 0000003B 00                  <1>     db 0x0       ; segment base, bits 16-23
-    57 0000003C 9A                  <1>     db 10011010b ; flags (8 bits)
-    58 0000003D CF                  <1>     db 11001111b ; flags (4 bits) + segment length, bits 16-19
-    59 0000003E 00                  <1>     db 0x0       ; segment base, bits 24-31
-    60                              <1> 
-    61                              <1> ; GDT for data segment. base and length identical to code segment
-    62                              <1> ; some flags changed, again, refer to os-dev.pdf
-    63                              <1> gdt_data:
-    64 0000003F FFFF                <1>     dw 0xffff
-    65 00000041 0000                <1>     dw 0x0
-    66 00000043 00                  <1>     db 0x0
-    67 00000044 92                  <1>     db 10010010b
-    68 00000045 CF                  <1>     db 11001111b
-    69 00000046 00                  <1>     db 0x0
-    70                              <1> 
-    71                              <1> gdt_end:
-    72                              <1> 
-    73                              <1> ; GDT descriptor
-    74                              <1> gdt_descriptor:
-    75 00000047 1700                <1>     dw gdt_end - gdt_start - 1 ; size (16 bit), always one less of its true size
-    76 00000049 [2F000000]          <1>     dd gdt_start ; address (32 bit)
-    77                              <1> 
-    78                              <1> ; define some constants for later use
-    79                              <1> CODE_SEG equ gdt_code - gdt_start
-    80                              <1> DATA_SEG equ gdt_data - gdt_start
-    45                                  %include "../08_32bit-printing/32bit_print.asm"
-     1                              <1> ; ; There's nothing to run for lesson 8 since we can't run it from the bootloader
-     2                              <1> ; ; until we know how to prepare/use the Global Descriptor Table (GDT), which 
-     3                              <1> ; ; "defines memory segments and their protected-mode attributes".
-     4                              <1> ; 
-     5                              <1> ; [bits 32]                       ; Using 32-bit protected mode
-     6                              <1> ; 
-     7                              <1> ; ; This is how to define a constant:
-     8                              <1> ; VIDEO_MEMORY    equ 0xb80000
-     9                              <1> ; WHITE_ON_BLACK  equ 0x0f        ; This defines the color byte 
-    10                              <1> ; 
-    11                              <1> ; print_string_pm:
-    12                              <1> ;     pusha
-    13                              <1> ;     mov edx, VIDEO_MEMORY
-    14                              <1> ; 
-    15                              <1> ; print_string_pm_loop:
-    16                              <1> ;     mov al, [ebx]               ; [ebs] is the address of the character to load
-    17                              <1> ;     mov ah, WHITE_ON_BLACK      ; Lower by has the character, upper by has the color
-    18                              <1> ; 
-    19                              <1> ;     cmp al, 0                   ; Check if we're at the end of the string
-    20                              <1> ;     je print_string_pm_done     ; If we're at the end of the string, we're done!
-    21                              <1> ; 
-    22                              <1> ;     mov [edx], ax               ; Store character and attribute in video memory
-    23                              <1> ;     add ebx, 1                  ; On to the next characer
-    24                              <1> ;     add edx, 2                  ; And on to the next position in video memory
-    25                              <1> ; 
-    26                              <1> ; print_string_pm_done:
-    27                              <1> ;     popa
-    28                              <1> ;     ret
-    29                              <1> 
-    30                              <1> 
-    31                              <1> [bits 32] ; using 32-bit protected mode
+     1                                  ; This file is essentially copied from 
+     2                                  ; https://github.com/cfenollosa/os-tutorial/tree/master/10-32bit-enter
+     3                                  
+     4                                  [org 0x7c00]                    ; bootloader offset
+     5 00000000 BD0090                      mov     bp, 0x9000          ; Set stack
+     6 00000003 89EC                        mov     sp, bp
+     7                                  
+     8 00000005 BB[A100]                    mov     bx, MSG_REAL_MODE   ; Print the real mode message
+     9 00000008 E80500                      call    print
+    10                                  
+    11 0000000B E85800                      call    switch_to_pm        ; This is in boot_print_func.asm
+    12 0000000E EBFE                        jmp     $                   ; Should never actually get here...
+    13                                  
+    14                                  %include "print.asm"
+     1                              <1> ; This simple function prints stuff!
+     2                              <1> print:
+     3 00000010 60                  <1>     pusha           ; Save all the registers!
+     4                              <1> 
+     5                              <1> start:
+     6 00000011 8A07                <1>     mov al, [bx]    ; Copy the next character into al
+     7 00000013 3C00                <1>     cmp al, 0x00    ; Check if al now contains a null character
+     8 00000015 7509                <1>     jne done        ; If al does not contain a null character, loop back to print
+     9                              <1> 
+    10 00000017 B40E                <1>     mov ah, 0x0e
+    11 00000019 CD10                <1>     int 0x10        ; Print whatever is in al
+    12                              <1> 
+    13 0000001B 83C301              <1>     add bx, 1       ; Increment the "pointer" to point to the next character in the string
+    14 0000001E EBF1                <1>     jmp start
+    15                              <1> 
+    16                              <1> done:
+    17 00000020 61                  <1>     popa            ; Restore the registers
+    18 00000021 C3                  <1>     ret             ; Return to where we were called
+    19                              <1> 
+    20                              <1> print_nl:
+    21 00000022 60                  <1>     pusha
+    22                              <1> 
+    23 00000023 B40E                <1>     mov ah, 0x0e
+    24 00000025 B00A                <1>     mov al, 0x0a ; newline char
+    25 00000027 CD10                <1>     int 0x10
+    26 00000029 B00D                <1>     mov al, 0x0d ; carriage return
+    27 0000002B CD10                <1>     int 0x10
+    28                              <1> 
+    29 0000002D 61                  <1>     popa
+    30 0000002E C3                  <1>     ret
+    31                              <1> 
     32                              <1> 
-    33                              <1> ; this is how constants are defined
-    34                              <1> VIDEO_MEMORY equ 0xb8000
-    35                              <1> WHITE_ON_BLACK equ 0x0f ; the color byte for each character
+    15                                  %include "../09_32bit-gdt/32bit-gdt.asm"
+     1                              <1> ; Here comes the GDT!
+     2                              <1> gdt_start:
+     3                              <1> 
+     4                              <1> gdt_null:           ; The GDT must start with a null descriptor
+     5 0000002F 00000000            <1>     dd 0x0          ; dd is used to define a double word, which is 4 bytes
+     6 00000033 00000000            <1>     dd 0x0
+     7                              <1> 
+     8                              <1> gdt_code:       ; This is the code segment descriptor
+     9                              <1>     ; base = 0x0, limit = 0xfffff
+    10                              <1>     ; First flags:  present (1) privilege (00) descriptor type (1) -> 1001b (b is for binary)
+    11                              <1>     ; Type flags:   code (1) conforming (0) readable (1) accessed (0) -> 1010b
+    12                              <1>     ; Second flags: granularity (1) 32-bit default (1) 64-bit segments (0) AVL (0) -> 1100b
+    13 00000037 FFFF                <1>     dw 0xffff       ; limit (bits 0-15)
+    14 00000039 0000                <1>     dw 0x0          ; Base (bits 0-15)
+    15 0000003B 00                  <1>     db 0x0          ; Base (bits 16-23)
+    16 0000003C 9A                  <1>     db 10011010b    ; first flags and type flags
+    17 0000003D CF                  <1>     db 11001111b    ; second flags and limit (bits 16-19)
+    18 0000003E 00                  <1>     db 0x0          ; Base (bits 24-31)
+    19                              <1> 
+    20                              <1> gdt_data:       ; This is the data segment descriptor
+    21                              <1>     ; Same as the code segment descriptor except for type flags
+    22                              <1>     ; Type flags:   code (0) expand down (0) writable (1) accessed (0) -> 0010b
+    23 0000003F FFFF                <1>     dw 0xffff       ; limit (bits 0-15)
+    24 00000041 0000                <1>     dw 0x0          ; Base (bits 0-15)
+    25 00000043 00                  <1>     db 0x0          ; Base (bits 16-23)
+    26 00000044 92                  <1>     db 10010010b    ; first flags and type flags
+    27 00000045 CF                  <1>     db 11001111b    ; second flags and limit (bits 16-19)
+    28 00000046 00                  <1>     db 0x0          ; Base (bits 24-31)
+    29                              <1> 
+    30                              <1> gdt_end:        ; This label makes it easy to calculate the size 
+    31                              <1>                 ; of the GDT for the GDT descriptor
+    32                              <1> 
+    33                              <1> gdt_descriptor:
+    34 00000047 1700                <1>     dw gdt_end - gdt_start - 1  ; The size of the GDT is always 1 less than true size
+    35 00000049 [2F000000]          <1>     dd gdt_start                ; Start address of the GDT
     36                              <1> 
-    37                              <1> print_string_pm:
-    38 0000004D 60                  <1>     pusha
-    39 0000004E BA00800B00          <1>     mov edx, VIDEO_MEMORY
-    40                              <1> 
-    41                              <1> print_string_pm_loop:
-    42 00000053 8A03                <1>     mov al, [ebx] ; [ebx] is the address of our character
-    43 00000055 B40F                <1>     mov ah, WHITE_ON_BLACK
-    44                              <1> 
-    45 00000057 3C00                <1>     cmp al, 0 ; check if end of string
-    46 00000059 740B                <1>     je print_string_pm_done
-    47                              <1> 
-    48 0000005B 668902              <1>     mov [edx], ax ; store character + attribute in video memory
-    49 0000005E 83C301              <1>     add ebx, 1 ; next char
-    50 00000061 83C202              <1>     add edx, 2 ; next video memory position
-    51                              <1> 
-    52 00000064 EBED                <1>     jmp print_string_pm_loop
-    53                              <1> 
-    54                              <1> print_string_pm_done:
-    55 00000066 61                  <1>     popa
-    56 00000067 C3                  <1>     ret
-    57                              <1> 
-    46                                  %include "32bit-switch.asm"
-     1                              <1> ; ; This file is essentially copied from 
-     2                              <1> ; ; https://github.com/cfenollosa/os-tutorial/tree/master/10-32bit-enter
-     3                              <1> ; 
-     4                              <1> ; [bits 16]
-     5                              <1> ; switch_to_pm:
-     6                              <1> ;     cli                         ; disable interrupts
-     7                              <1> ;     lgdt    [gdt_descriptor]    ; Load the GDT descriptor
-     8                              <1> ;     mov     eax, cr0            ; Set 32-bit mode in cr0
-     9                              <1> ;     or      eax, 0x1
-    10                              <1> ;     mov     cr0, eax            ; Move result back into cr0
-    11                              <1> ;     jmp     CODE_SEG:init_pm    ; Execute a far jump by using a different segment
-    12                              <1> ; 
-    13                              <1> ; [bits 32]
-    14                              <1> ; init_pm:                        ; Hey, we're using 32-bit instructions now!
-    15                              <1> ;     mov     ax, DATA_SEG        ; Update all the segment registers
-    16                              <1> ;     mov     ds, ax
-    17                              <1> ;     mov     ss, ax
-    18                              <1> ;     mov     es, ax
-    19                              <1> ;     mov     fs, ax
-    20                              <1> ;     mov     gs, ax
-    21                              <1> ; 
-    22                              <1> ;     mov     ebp, 0x9000         ; update the stack right at the top of the free space
-    23                              <1> ;     mov     esp, ebp
-    24                              <1> ;     
-    25                              <1> ;     call    BEGIN_PM            ; Call a label with useful code!
-    26                              <1> 
-    27                              <1> [bits 16]
-    28                              <1> switch_to_pm:
-    29 00000068 FA                  <1>     cli ; 1. disable interrupts
-    30 00000069 0F0116[4700]        <1>     lgdt [gdt_descriptor] ; 2. load the GDT descriptor
-    31 0000006E 0F20C0              <1>     mov eax, cr0
-    32 00000071 6683C801            <1>     or eax, 0x1 ; 3. set 32-bit mode bit in cr0
-    33 00000075 0F22C0              <1>     mov cr0, eax
-    34 00000078 EA[7D00]0800        <1>     jmp CODE_SEG:init_pm ; 4. far jump by using a different segment
-    35                              <1> 
-    36                              <1> [bits 32]
-    37                              <1> init_pm: ; we are now using 32-bit instructions
-    38 0000007D 66B81000            <1>     mov ax, DATA_SEG ; 5. update the segment registers
-    39 00000081 8ED8                <1>     mov ds, ax
-    40 00000083 8ED0                <1>     mov ss, ax
-    41 00000085 8EC0                <1>     mov es, ax
-    42 00000087 8EE0                <1>     mov fs, ax
-    43 00000089 8EE8                <1>     mov gs, ax
-    44                              <1> 
-    45 0000008B BD00000900          <1>     mov ebp, 0x90000 ; 6. update the stack right at the top of the free space
-    46 00000090 89EC                <1>     mov esp, ebp
-    47                              <1> 
-    48 00000092 E800000000          <1>     call BEGIN_PM ; 7. Call a well-known label with useful code
-    47                                  
-    48                                  [bits 32]
-    49                                  BEGIN_PM: ; after the switch we will get here
-    50 00000097 BB[BF000000]                mov ebx, MSG_PROT_MODE
-    51 0000009C E8ACFFFFFF                  call print_string_pm ; Note that this will be written at the top left corner
-    52 000000A1 EBFE                        jmp $
-    53                                  
-    54 000000A3 537461727465642069-     MSG_REAL_MODE db "Started in 16-bit real mode", 0
-    54 000000AC 6E2031362D62697420-
-    54 000000B5 7265616C206D6F6465-
-    54 000000BE 00                 
-    55 000000BF 4C6F61646564203332-     MSG_PROT_MODE db "Loaded 32-bit protected mode", 0
-    55 000000C8 2D6269742070726F74-
-    55 000000D1 6563746564206D6F64-
-    55 000000DA 6500               
-    56                                  
-    57                                  ; bootsector
-    58 000000DC 00<rept>                times 510-($-$$) db 0
-    59 000001FE 55AA                    dw 0xaa55
+    37                              <1> ; This comment is copy-and-pasted from the PDF
+    38                              <1> ; Define some handy constants for the GDT segment descriptor offsets , which
+    39                              <1> ; are what segment registers must contain when in protected mode. For example ,
+    40                              <1> ; when we set DS = 0 x10 in PM , the CPU knows that we mean it to use the
+    41                              <1> ; segment described at offset 0 x10 ( i.e. 16 bytes ) in our GDT , which in our
+    42                              <1> ; case is the DATA segment (0 x0 -> NULL ; 0x08 -> CODE ; 0 x10 -> DATA )
+    43                              <1> CODE_SEG equ gdt_code - gdt_start
+    44                              <1> DATA_SEG equ gdt_data - gdt_start
+    45                              <1> 
+    16                                  %include "../08_32bit-printing/32bit_print.asm"
+     1                              <1> ; There's nothing to run for lesson 8 since we can't run it from the bootloader
+     2                              <1> ; until we know how to prepare/use the Global Descriptor Table (GDT), which 
+     3                              <1> ; "defines memory segments and their protected-mode attributes".
+     4                              <1> 
+     5                              <1> [bits 32]                       ; Using 32-bit protected mode
+     6                              <1> 
+     7                              <1> ; This is how to define a constant:
+     8                              <1> VIDEO_MEMORY    equ 0xb80000
+     9                              <1> WHITE_ON_BLACK  equ 0x0f        ; This defines the color byte 
+    10                              <1> 
+    11                              <1> print_string_pm:
+    12 0000004D 60                  <1>     pusha
+    13 0000004E BA0000B800          <1>     mov edx, VIDEO_MEMORY
+    14                              <1> 
+    15                              <1> print_string_pm_loop:
+    16 00000053 8A03                <1>     mov al, [ebx]               ; [ebs] is the address of the character to load
+    17 00000055 B40F                <1>     mov ah, WHITE_ON_BLACK      ; Lower by has the character, upper by has the color
+    18                              <1> 
+    19 00000057 3C00                <1>     cmp al, 0                   ; Check if we're at the end of the string
+    20 00000059 7409                <1>     je print_string_pm_done     ; If we're at the end of the string, we're done!
+    21                              <1> 
+    22 0000005B 668902              <1>     mov [edx], ax               ; Store character and attribute in video memory
+    23 0000005E 83C301              <1>     add ebx, 1                  ; On to the next characer
+    24 00000061 83C202              <1>     add edx, 2                  ; And on to the next position in video memory
+    25                              <1> 
+    26                              <1> print_string_pm_done:
+    27 00000064 61                  <1>     popa
+    28 00000065 C3                  <1>     ret
+    17                                  %include "32bit-switch.asm"
+     1                              <1> ; This file is essentially copied from 
+     2                              <1> ; https://github.com/cfenollosa/os-tutorial/tree/master/10-32bit-enter
+     3                              <1> 
+     4                              <1> [bits 16]
+     5                              <1> switch_to_pm:
+     6 00000066 FA                  <1>     cli                         ; disable interrupts
+     7 00000067 0F0116[4700]        <1>     lgdt    [gdt_descriptor]    ; Load the GDT descriptor
+     8 0000006C 0F20C0              <1>     mov     eax, cr0            ; Set 32-bit mode in cr0
+     9 0000006F 6683C801            <1>     or      eax, 0x1
+    10 00000073 0F22C0              <1>     mov     cr0, eax            ; Move result back into cr0
+    11 00000076 EA[7B00]0800        <1>     jmp     CODE_SEG:init_pm    ; Execute a far jump by using a different segment
+    12                              <1> 
+    13                              <1> [bits 32]
+    14                              <1> init_pm:                        ; Hey, we're using 32-bit instructions now!
+    15 0000007B 66B81000            <1>     mov     ax, DATA_SEG        ; Update all the segment registers
+    16 0000007F 8ED8                <1>     mov     ds, ax
+    17 00000081 8ED0                <1>     mov     ss, ax
+    18 00000083 8EC0                <1>     mov     es, ax
+    19 00000085 8EE0                <1>     mov     fs, ax
+    20 00000087 8EE8                <1>     mov     gs, ax
+    21                              <1> 
+    22 00000089 BD00900000          <1>     mov     ebp, 0x9000         ; update the stack right at the top of the free space
+    23 0000008E 89EC                <1>     mov     esp, ebp
+    24                              <1>     
+    25 00000090 E800000000          <1>     call    BEGIN_PM            ; Call a label with useful code!
+    18                                  
+    19                                  [bits 32]
+    20                                  BEGIN_PM:
+    21 00000095 BB[BD000000]                mov     ebx, MSG_PROT_MODE  ; Print 32 bit mode message
+    22 0000009A E8AEFFFFFF                  call    print_string_pm
+    23 0000009F EBFE                        jmp     $                   ; Loop here forever
+    24                                  
+    25 000000A1 537461727465642069-     MSG_REAL_MODE db "Started in 16-bit real mode", 0
+    25 000000AA 6E2031362D62697420-
+    25 000000B3 7265616C206D6F6465-
+    25 000000BC 00                 
+    26 000000BD 4C6F61646564203332-     MSG_PROT_MODE db "Loaded 32-bit protected mode", 0
+    26 000000C6 2D6269742070726F74-
+    26 000000CF 6563746564206D6F64-
+    26 000000D8 6500               
+    27                                  
+    28                                  ; bootsector
+    29 000000DA 00<rept>                times 510-($-$$) db 0
+    30 000001FE 55AA                    dw 0xaa55

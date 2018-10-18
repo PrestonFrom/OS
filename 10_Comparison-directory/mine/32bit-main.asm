@@ -12,8 +12,8 @@
     jmp     $                   ; Should never actually get here...
 
 %include "print.asm"
-%include "../09_32bit-gdt/32bit-gdt.asm"
-%include "../08_32bit-printing/32bit_print.asm"
+%include "32bit-gdt.asm"
+%include "32bit_print.asm"
 %include "32bit-switch.asm"
 
 [bits 32]

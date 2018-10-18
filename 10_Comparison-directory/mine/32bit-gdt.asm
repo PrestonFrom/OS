@@ -1,15 +1,14 @@
 ; Here comes the GDT!
 gdt_start:
-
-gdt_null:           ; The GDT must start with a null descriptor
+    dd 0x0          ; The GDT must start with a null descriptor
     dd 0x0          ; dd is used to define a double word, which is 4 bytes
-    dd 0x0
 
-gdt_code:       ; This is the code segment descriptor
-    ; base = 0x0, limit = 0xfffff
-    ; First flags:  present (1) privilege (00) descriptor type (1) -> 1001b (b is for binary)
-    ; Type flags:   code (1) conforming (0) readable (1) accessed (0) -> 1010b
-    ; Second flags: granularity (1) 32-bit default (1) 64-bit segments (0) AVL (0) -> 1100b
+; This is the code segment descriptor
+; base = 0x0, limit = 0xfffff
+; First flags:  present (1) privilege (00) descriptor type (1) -> 1001b (b is for binary)
+; Type flags:   code (1) conforming (0) readable (1) accessed (0) -> 1010b
+; Second flags: granularity (1) 32-bit default (1) 64-bit segments (0) AVL (0) -> 1100b
+gdt_code:       
     dw 0xffff       ; limit (bits 0-15)
     dw 0x0          ; Base (bits 0-15)
     db 0x0          ; Base (bits 16-23)

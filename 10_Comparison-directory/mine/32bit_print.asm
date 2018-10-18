@@ -5,7 +5,7 @@
 [bits 32]                       ; Using 32-bit protected mode
 
 ; This is how to define a constant:
-VIDEO_MEMORY    equ 0xb80000
+VIDEO_MEMORY    equ 0xb8000
 WHITE_ON_BLACK  equ 0x0f        ; This defines the color byte 
 
 print_string_pm:
@@ -22,6 +22,8 @@ print_string_pm_loop:
     mov [edx], ax               ; Store character and attribute in video memory
     add ebx, 1                  ; On to the next characer
     add edx, 2                  ; And on to the next position in video memory
+
+    jmp print_string_pm_loop
 
 print_string_pm_done:
     popa
